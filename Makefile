@@ -4,30 +4,15 @@
 
 # Use bash for inline if-statements in arch_patch target
 SHELL:=bash
-OWNER?=jupyter
+OWNER?=claudios
 
 # Need to list the images in build dependency order
 # All of the images
 ALL_IMAGES:= \
-	docker-stacks-foundation \
-	base-notebook \
-	minimal-notebook \
-	r-notebook \
-	scipy-notebook \
-	tensorflow-notebook \
-	datascience-notebook \
-	pyspark-notebook \
-	all-spark-notebook
+	scipy-notebook
 
 AARCH64_IMAGES:= \
-	docker-stacks-foundation \
-	base-notebook \
-	minimal-notebook \
-	r-notebook \
-	scipy-notebook \
-	datascience-notebook \
-	pyspark-notebook \
-	all-spark-notebook
+	scipy-notebook
 
 # Enable BuildKit for Docker build
 export DOCKER_BUILDKIT:=1
@@ -69,21 +54,6 @@ cont-rm-all: ## remove all containers
 
 
 
-docs: ## build HTML documentation
-	sphinx-build -W --keep-going --color docs/ docs/_build/
-
-linkcheck-docs: ## check broken links
-	sphinx-build -W --keep-going --color -b linkcheck docs/ docs/_build/
-
-
-
-hook/%: ## run post-build hooks for an image
-	python3 -m tagging.tag_image --short-image-name "$(notdir $@)" --owner "$(OWNER)" && \
-	python3 -m tagging.write_manifest --short-image-name "$(notdir $@)" --hist-line-dir /tmp/hist_lines/ --manifest-dir /tmp/manifests/ --owner "$(OWNER)"
-hook-all: $(foreach I, $(ALL_IMAGES), hook/$(I)) ## run post-build hooks for all images
-
-
-
 img-clean: img-rm-dang img-rm ## clean dangling and jupyter images
 img-list: ## list jupyter images
 	@echo "Listing $(OWNER) images ..."
@@ -94,14 +64,6 @@ img-rm: ## remove jupyter images
 img-rm-dang: ## remove dangling images (tagged None)
 	@echo "Removing dangling images ..."
 	-docker rmi --force $(shell docker images -f "dangling=true" -q) 2> /dev/null
-
-
-
-pre-commit-all: ## run pre-commit hook on all files
-	@pre-commit run --all-files --hook-stage manual
-pre-commit-install: ## set up the git hook scripts
-	@pre-commit --version
-	@pre-commit install
 
 
 
@@ -121,9 +83,3 @@ run-shell/%: ## run a bash in interactive mode in a stack
 
 run-sudo-shell/%: ## run a bash in interactive mode as root in a stack
 	docker run -it --rm --user root $(OWNER)/$(notdir $@) $(SHELL)
-
-
-
-test/%: ## run tests against a stack
-	python3 -m tests.run_tests --short-image-name "$(notdir $@)" --owner "$(OWNER)"
-test-all: $(foreach I, $(ALL_IMAGES), test/$(I)) ## test all stacks
